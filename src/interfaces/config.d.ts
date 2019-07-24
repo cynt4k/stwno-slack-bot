@@ -18,6 +18,7 @@ export interface IConfigSlack {
 export interface IConfigExpress {
     port: number;
     version: string;
+    tunnelDomain: string;
 }
 
 export interface IConfig {

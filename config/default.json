@@ -15,6 +15,7 @@
     },
     "express": {
         "port": 3000,
-        "version": "v1"
+        "version": "v1",
+        "tunnelDomain": "stwno-api-dev"
     }
 }

@@ -1,6 +1,6 @@
 import 'module-alias/register';
 import config from 'config';
-import { Logger, ExpressService } from '@home/core';
+import { Logger, ExpressService, TunnelService } from '@home/core';
 import { IConfig, IConfigMensa, IConfigMongodb, IConfigSlack, IConfigExpress } from '@home/interfaces';
 
 Logger.init();
@@ -20,5 +20,28 @@ Logger.init();
         process.exit(1);
     }
 
+    try {
+        const tunnel = await TunnelService.init(expressConfig);
+        Logger.info(`Tunnel url spawned under domain ${tunnel}`);
+    } catch (e) {
+        Logger.error(e);
+        process.exit(1);
+    }
+
     Logger.info('Started');
+
+
+    const disconnect = (): void => {
+        TunnelService.disconnect();
+    };
+
+    process.on('SIGTERM', (code) => {
+        disconnect();
+        process.exit(0);
+    });
+
+    process.on('SIGINT', (code) => {
+        disconnect();
+        process.exit(0);
+    });
 })();
