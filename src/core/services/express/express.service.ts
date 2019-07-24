@@ -5,6 +5,7 @@ import bodyParser from 'body-parser';
 import methodOverride from 'method-override';
 import { Logger, ExpressHandler } from '@home/core/utils';
 import { IConfigExpress } from '@home/interfaces/config';
+import { SlackRoute } from '@home/routes/slack.route';
 
 export namespace ExpressService {
     let config: IConfigExpress;
@@ -30,6 +31,7 @@ export namespace ExpressService {
             res.status(200).send('OK');
         });
 
+        app.use('/slack', SlackRoute);
 
         app.use('*', ExpressHandler.express);
         app.all('*', ExpressHandler.checkResponse);

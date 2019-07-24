@@ -1,6 +1,6 @@
 import 'module-alias/register';
 import config from 'config';
-import { Logger, ExpressService, TunnelService } from '@home/core';
+import { Logger, ExpressService, TunnelService, SlackService } from '@home/core';
 import { IConfig, IConfigMensa, IConfigMongodb, IConfigSlack, IConfigExpress } from '@home/interfaces';
 
 Logger.init();
@@ -23,6 +23,14 @@ Logger.init();
     try {
         const tunnel = await TunnelService.init(expressConfig);
         Logger.info(`Tunnel url spawned under domain ${tunnel}`);
+    } catch (e) {
+        Logger.error(e);
+        process.exit(1);
+    }
+
+    try {
+        await SlackService.init(slackConfig, expressConfig, mongodbConfig);
+        Logger.info(`Slack initialized`);
     } catch (e) {
         Logger.error(e);
         process.exit(1);

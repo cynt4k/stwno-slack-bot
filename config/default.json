@@ -9,9 +9,10 @@
         "database": "stwno-slack"
     },
     "slack": {
-        "id": "",
-        "secret": "",
-        "token": ""
+        "clientId": "",
+        "clientSecret": "",
+        "clientSigningSecret": "",
+        "redirectBaseUrl": "http://localhost:3000"
     },
     "express": {
         "port": 3000,

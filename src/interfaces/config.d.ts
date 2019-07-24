@@ -10,9 +10,10 @@ export interface IConfigMongodb {
 }
 
 export interface IConfigSlack {
-    id: string;
-    secret: string;
-    token: string;
+    clientId: string;
+    clientSecret: string;
+    clientSigningSecret: string;
+    redirectBaseUrl: string;
 }
 
 export interface IConfigExpress {
