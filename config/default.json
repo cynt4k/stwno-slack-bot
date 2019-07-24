@@ -1,0 +1,16 @@
+{
+    "mensa": {
+        "url": "http://localhost:3000/v1"
+    },
+    "mongodb": {
+        "server": "localhost:27017",
+        "username": "user",
+        "password": "user",
+        "database": "stwno-slack"
+    },
+    "slack": {
+        "id": "",
+        "secret": "",
+        "token": ""
+    }
+}
