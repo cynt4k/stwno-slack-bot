@@ -12,5 +12,9 @@
         "id": "",
         "secret": "",
         "token": ""
+    },
+    "express": {
+        "port": 3000,
+        "version": "v1"
     }
 }
