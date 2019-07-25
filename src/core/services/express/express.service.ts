@@ -31,7 +31,7 @@ export namespace ExpressService {
             res.status(200).send('OK');
         });
 
-        app.use('/slack', SlackRoute);
+        app.use(`/${config.version}/slack`, SlackRoute);
 
         app.use('*', ExpressHandler.express);
         app.all('*', ExpressHandler.checkResponse);

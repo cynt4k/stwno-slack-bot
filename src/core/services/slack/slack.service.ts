@@ -1,7 +1,9 @@
 import { Botkit, BotWorker, BotkitMessage } from 'botkit';
 import { SlackAdapter, SlackEventMiddleware, SlackMessageTypeMiddleware, SlackDialog, SlackBotWorker } from 'botbuilder-adapter-slack';
 import { MongoDbStorage } from 'botbuilder-storage-mongodb';
-import { IConfigSlack, IConfigExpress, IConfigMongodb } from '@home/interfaces';
+import _ from 'lodash';
+import { IConfigSlack, IConfigExpress, IConfigMongodb, ISlackWorkspaces } from '@home/interfaces';
+import { Logger } from '@home/core/utils';
 
 export namespace SlackService {
     let config: IConfigSlack;
@@ -18,10 +20,32 @@ export namespace SlackService {
             clientSigningSecret: config.clientSigningSecret,
             scopes: [ 'commands', 'bot' ],
             getTokenForTeam: async(teamId) => {
-                return Promise.resolve('jo');
+                try {
+                    const items = await controller.storage.read(['workspaces']);
+                    const workspaces: ISlackWorkspaces[] = items['workspaces'];
+
+                    const team = _.find(workspaces, (elem) => elem.teamId === teamId);
+                    if (!team) {
+                        return Promise.reject('no token for team');
+                    }
+                    return Promise.resolve(team.accessToken);
+                } catch (e) {
+                    return Promise.reject(e);
+                }
             },
             getBotUserByTeam: async(teamId) => {
-                return Promise.resolve('jo');
+                try {
+                    const items = await controller.storage.read(['workspaces']);
+                    const workspaces: ISlackWorkspaces[] = items['workspaces'];
+
+                    const team = _.find(workspaces, (elem) => elem.teamId === teamId);
+                    if (!team) {
+                        return Promise.reject('no botUser for team');
+                    }
+                    return Promise.resolve(team.botUser);
+                } catch (e) {
+                    return Promise.reject(e);
+                }
             }
         });
 
@@ -49,18 +73,22 @@ export namespace SlackService {
     };
 
     const handleSlashCommand = async (bot: BotWorker, entryMessage: BotkitMessage) => {
-
+        Logger.info(entryMessage.text || 'no message');
+        bot.reply(entryMessage, 'jo');
     };
 
     const handleInteractiveMessage = async (bot: BotWorker, entryMessage: BotkitMessage) => {
-
+        Logger.info(entryMessage.text || 'no message');
+        bot.reply(entryMessage, 'jo');
     };
 
     const handleDialogSubmission = async (bot: BotWorker, entryMessage: BotkitMessage) => {
-
+        Logger.info(entryMessage.text || 'no message');
+        bot.reply(entryMessage, 'jo');
     };
 
     const handleBlockActions = async (bot: BotWorker, entryMessage: BotkitMessage) => {
-
+        Logger.info(entryMessage.text || 'no message');
+        bot.reply(entryMessage, 'jo');
     };
 }
