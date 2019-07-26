@@ -3,3 +3,12 @@ export interface ISlackWorkspaces {
     teamId: string;
     botUser: string;
 }
+
+export interface ISlackTeamSettings {
+    teamId: string;
+    language: 'en' | 'de';
+    cronjob?: {
+        mensa: string;
+        time: Date;
+    };
+}

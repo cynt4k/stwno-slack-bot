@@ -5,5 +5,6 @@ export enum ErrorCode {
     LOCATION_FOUND,
     CRAWLER_NO_RESPONSE,
     CRAWLER_ERROR,
-    INVALID_DAY
+    INVALID_DAY,
+    SLACK_INVALID_TEAM
 }

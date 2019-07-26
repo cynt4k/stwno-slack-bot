@@ -43,7 +43,10 @@
     "lusca": "^1.6.1",
     "method-override": "^3.0.0",
     "module-alias": "^2.2.0",
-    "mongoose": "^5.6.6"
+    "mongoose": "^5.6.6",
+    "request": "^2.88.0",
+    "tunnel-ssh": "^4.1.4",
+    "url-join": "^4.0.1"
   },
   "devDependencies": {
     "@types/body-parser": "^1.17.0",
@@ -58,6 +61,9 @@
     "@types/method-override": "0.0.31",
     "@types/module-alias": "^2.0.0",
     "@types/mongoose": "^5.5.9",
+    "@types/request": "^2.48.2",
+    "@types/tunnel-ssh": "^4.1.0",
+    "@types/url-join": "^4.0.0",
     "tslint": "^5.18.0",
     "typescript": "^3.5.3"
   }

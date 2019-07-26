@@ -1,6 +1,6 @@
 {
     "mensa": {
-        "url": "http://localhost:3000/v1"
+        "baseUrl": "http://localhost:3000/v1"
     },
     "mongodb": {
         "server": "localhost:27017",

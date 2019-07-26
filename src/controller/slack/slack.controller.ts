@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import _ from 'lodash';
 import { SlackService, Logger } from '@home/core';
 import { StoreItem, StoreItems } from 'botbuilder';
-import { ISlackWorkspaces } from '@home/interfaces';
+import { ISlackWorkspaces, ISlackTeamSettings } from '@home/interfaces';
 import { HttpCodes, I18n } from '@home/misc';
 
 export namespace SlackController {
@@ -22,11 +22,13 @@ export namespace SlackController {
             const token = results.bot.bot_access_token;
             const bot_user = results.bot.bot_user_id;
 
-            const items = await SlackService.controller.storage.read(['workspaces']);
+            const items = await SlackService.controller.storage.read(['workspaces', 'settings']);
 
-            const workspaces: ISlackWorkspaces[] = items['workspaces'];
+            const workspaces: ISlackWorkspaces[] = items['workspaces'] || [];
+            const teamsSettings: ISlackTeamSettings[] = items['settings'] || [];
 
             const exist = _.find(workspaces, (elem) => elem.teamId === team_id);
+            const existSettings = _.find(teamsSettings, (elem) => elem.teamId === team_id);
 
             if (!exist) {
                 const entry: ISlackWorkspaces = {
@@ -34,13 +36,33 @@ export namespace SlackController {
                     accessToken: token,
                     botUser: bot_user
                 };
+
+                if (!existSettings) {
+                    const teamSettings: ISlackTeamSettings = {
+                        teamId: team_id,
+                        language: 'en'
+                    };
+                    teamsSettings.push(teamSettings);
+                    await SlackService.controller.storage.write({ settings: teamsSettings });
+                }
+
                 workspaces.push(entry);
+
                 await SlackService.controller.storage.write({ workspaces });
+
                 res.data = {
                     code: HttpCodes.OK,
                     message: I18n.INFO_SUCCESS
                 };
             } else {
+                if (!existSettings) {
+                    const teamSettings: ISlackTeamSettings = {
+                        teamId: team_id,
+                        language: 'en'
+                    };
+                    teamsSettings.push(teamSettings);
+                    await SlackService.controller.storage.write({ settings: teamsSettings });
+                }
                 res.data = {
                     code: HttpCodes.BadRequest,
                     message: I18n.WARN_SLACK_ALREADY_REGISTERED
