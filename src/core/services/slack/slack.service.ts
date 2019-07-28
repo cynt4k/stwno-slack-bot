@@ -2,10 +2,16 @@ import { Botkit, BotWorker, BotkitMessage } from 'botkit';
 import { SlackAdapter, SlackEventMiddleware, SlackMessageTypeMiddleware, SlackDialog, SlackBotWorker } from 'botbuilder-adapter-slack';
 import { MongoDbStorage } from 'botbuilder-storage-mongodb';
 import _ from 'lodash';
-import { IConfigSlack, IConfigExpress, IConfigMongodb, ISlackWorkspaces, ISlackTeamSettings } from '@home/interfaces';
+import qwant from 'qwant-api';
+import { IConfigSlack, IConfigExpress, IConfigMongodb, ISlackWorkspaces, ISlackTeamSettings, IMeal } from '@home/interfaces';
 import { Logger } from '@home/core/utils';
 import { MensaService } from '../mensa';
 import { MensaError, ErrorCode } from '@home/error';
+
+interface ISlackDialogSelect {
+    value: string;
+    label: string;
+}
 
 export namespace SlackService {
     let config: IConfigSlack;
@@ -68,13 +74,15 @@ export namespace SlackService {
     };
 
     const setupController = () => {
+        // @ts-ignore
         controller.on('slash_command', handleSlashCommand);
         controller.on('interactive_message', handleInteractiveMessage);
+        // @ts-ignore
         controller.on('dialog_submission', handleDialogSubmission);
         controller.on('block_actions', handleBlockActions);
     };
 
-    const handleSlashCommand = async (bot: BotWorker, entryMessage: BotkitMessage) => {
+    const handleSlashCommand = async (bot: SlackBotWorker, entryMessage: BotkitMessage) => {
         if (!entryMessage.text) {
             return Promise.resolve();
         }
@@ -87,9 +95,13 @@ export namespace SlackService {
             case 'info':
                 await bot.reply(entryMessage, createInfoMessage()); break;
             case 'location':
-                await bot.reply(
-                    entryMessage,
-                    await createMensaSelect(entryMessage.team_id, entryMessage.incoming_message.conversation.id, messages[1])); break;
+                const dialog = await createMensaDialog(entryMessage.team_id, messages[1]);
+                await bot.replyWithDialog(entryMessage, dialog.asObject());
+                // await bot.reply(entryMessage, dialog.asObject());
+                break;
+                // await bot.reply(
+                //     entryMessage,
+                //     await createMensaSelect(entryMessage.team_id, entryMessage.incoming_message.conversation.id, messages[1])); break;
             default:
                 await bot.reply(entryMessage, 'Unknown command');
                 await bot.reply(entryMessage, createHelpMessage());
@@ -103,9 +115,22 @@ export namespace SlackService {
         await bot.reply(entryMessage, 'jo');
     };
 
-    const handleDialogSubmission = async (bot: BotWorker, entryMessage: BotkitMessage) => {
-        Logger.info(entryMessage.text || 'no message');
-        await bot.reply(entryMessage, 'jo');
+    const handleDialogSubmission = async (bot: SlackBotWorker, entryMessage: BotkitMessage) => {
+
+        const teamSettings = await getTeamSettings(entryMessage.team.id);
+
+        switch (entryMessage.callback_id) {
+            case 'mensa_dialog':
+                const mensa = entryMessage.submission.mensa as string;
+                const date = new Date(Date.parse(entryMessage.submission.date));
+                const mensaMenu = await createMensaMenu(mensa, teamSettings.language, date);
+                const sentMessage = await bot.reply(entryMessage, 'Loading menu');
+                bot.deleteMessage(sentMessage);
+                bot.reply(entryMessage, mensaMenu);
+                break;
+            default: await bot.reply(entryMessage, 'Unknown dialog callback_id');
+        }
+        return Promise.resolve();
     };
 
     const handleBlockActions = async (bot: BotWorker, entryMessage: BotkitMessage) => {
@@ -155,92 +180,116 @@ export namespace SlackService {
         const conversations = items['conversation'];
     };
 
-    const createMensaSelect = async (teamId: string, conversationId: string, locationId?: string): Promise<object> => {
+    const createMensaDialog = async (teamId: string, locationId?: string): Promise<SlackDialog> => {
         const teamSettings = await getTeamSettings(teamId);
         const mensas = await MensaService.getMensas();
         const now = new Date();
+
+        const dialog = new SlackDialog('Select a mensa', 'mensa_dialog', 'Request');
+
+        const mensa_options: [ISlackDialogSelect] = _.map(mensas, (mensa): ISlackDialogSelect => {
+            return {
+                value: mensa.id,
+                label: mensa.name[teamSettings.language]
+            };
+        }) as [ISlackDialogSelect];
+
+        const date_options: ISlackDialogSelect[] = [];
+
+        for (let i = 1; i < 7; i++) {
+            const first = now.getDate() - now.getDay() + i;
+            const day = new Date(now.setDate(first));
+            date_options.push({
+                value: `${day.getFullYear()}-${day.getMonth()}-${day.getDay()}`,
+                label: day.toDateString()
+            });
+        }
+
+
+        dialog.addSelect('Select a mensa', 'mensa', 'selected_mensa', mensa_options);
+        dialog.addSelect('Select a date', 'date', 'selected_date', date_options as [ISlackDialogSelect]);
+
+        return dialog;
+    };
+
+    const createMensaMenu = async (locationId: string, language: string, day: Date): Promise<object> => {
         const message = {
             blocks: [] as any[]
         };
 
-        const location = {
+        message.blocks.push({
             type: 'section',
             text: {
-                type: 'mrkdwn',
-                text: 'Select a mensa from the list'
-            },
-            block_id: 'mensa_location',
-            accessory: {
-                type: 'static_select',
-                placeholder: {
-                    type: 'plain_text',
-                    text: 'Select a mensa',
-                    emoji: true
-                },
-                options: [] as any[]
+                type: 'plain_text',
+                text: `Meal for ${day.toDateString()}`,
+                emoji: false
             }
-        };
-
-        _.forEach(mensas, (mensa) => {
-            location.accessory.options.push({
-                text: {
-                    type: 'plain_text',
-                    text: mensa.name[teamSettings.language],
-                    emoji: false
-                },
-                value: mensa.id
-            });
         });
-
-        message.blocks.push(location);
         message.blocks.push({
             type: 'divider'
         });
-
-        const datePicker = {
-            type: 'section',
-            text: {
-                type: 'mrkdwn',
-                text: 'Pick a date for the mensa'
-            },
-            block_id: 'mensa_date',
-            accessory: {
-                type: 'datepicker',
-                initial_date: `${now.getFullYear()}-${now.getMonth()}-${now.getDay()}`,
-                placeholder: {
-                    type: 'plain_text',
-                    text: 'Select a date',
-                    emoji: true
-                }
-            }
-        };
-        message.blocks.push(datePicker);
-
-        return message;
-    };
-
-    const createMensaMenu = async (locationId: string, day: Date) => {
-        const message = {
-            blocks: []
-        };
 
         const weekdays = [ 'su', 'mo', 'tu', 'we', 'th', 'fr', 'sa'];
 
         try {
             const meals = await MensaService.getMealsForMensa(locationId, weekdays[day.getDate()]);
 
-            Logger.info(meals.toString());
+            const createMealText = (meal: IMeal): string => {
+                const priceFormat = (price: number): string => {
+                    return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(price);
+                };
+
+                return `*${meal.name}*\nPrice\n\tStudents: *${priceFormat(meal.price.student)}*\n\tEmployee: *${priceFormat(meal.price.employee)}*\n\tGuest: *${priceFormat(meal.price.guest)}*`;
+            };
+
+            if (meals.length === 0) {
+                message.blocks.push({
+                    type: 'section',
+                    text: {
+                        type: 'mrkdwn',
+                        text: '*No meals*'
+                    }
+                });
+            } else {
+                await Promise.all(_.map(meals, async (meal): Promise<void> => {
+                    const mealPicture = await searchQwantImages(meal.name);
+                    message.blocks.push({
+                        type: 'section',
+                        text: {
+                            type: 'mrkdwn',
+                            text: createMealText(meal)
+                        },
+                        accessory: {
+                            type: 'image',
+                            image_url: mealPicture[0] || 'https://i.redd.it/fr3ij4z9gti01.jpg',
+                            alt_text: meal.name
+                        }
+                    });
+                    const ingredients = _.map(meal.ingredients, (ingredient): string => ingredient.name[language]);
+                    message.blocks.push({
+                        type: 'context',
+                        elements: [{
+                            type: 'plain_text',
+                            emoji: false,
+                            text: ingredients.join(', ') || 'No ingredients'
+                        }]
+                    });
+                    return Promise.resolve();
+                }));
+            }
+
+            return Promise.resolve(message);
         } catch (e) {
             Logger.error(e.message);
             return Promise.reject(e);
         }
     };
 
-    // const getMensaNames = async (language: 'en' | 'de'): Promise<void> => {
-    //     const mensas = await MensaService.getMensas();
-
-    //     _.forEach(mensas, (mensa) => {
-    //         mensa.name[language]
-    //     });
-    // };
+    const searchQwantImages = async (search: string): Promise<string[]> => new Promise<string[]>((resolve, reject) => {
+        qwant.search('images', { query: search, count: 1, offset: 0, language: 'german' }, (e, data) => {
+            if (e) return reject(e);
+            const images: string[] = _.map(data.data.result.items, (entry) => entry.media);
+            return resolve(images);
+        });
+    });
 }

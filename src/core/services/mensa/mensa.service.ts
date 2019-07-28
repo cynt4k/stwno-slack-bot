@@ -10,16 +10,12 @@ export namespace MensaService {
     };
 
     export const getMealsForMensa = async (locationId: string, day: string): Promise<IMeal[]> => new Promise<IMeal[]>((resolve, reject) => {
-        const url = urlJoin(config.baseUrl, 'mensa', locationId);
+        const url = urlJoin(config.baseUrl, 'mensa', locationId, day);
 
-        const mensaRequest = request.get(url);
-
-        mensaRequest.on('response', (res) => {
-            return resolve();
-        });
-
-        mensaRequest.on('error', (e) => {
-            return reject(e);
+        request.get(url, (e, res, body) => {
+            if (e) return reject(e);
+            const rawBody: IApiResponse<IMeal[]> = JSON.parse(body);
+            return resolve(rawBody.data);
         });
     });
 
